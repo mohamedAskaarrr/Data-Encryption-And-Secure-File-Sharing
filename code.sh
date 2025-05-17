@@ -1,5 +1,5 @@
 #!/bin/bash
-set -euo pipefail 
+set -euo pipefail
 
 # --- Configuration ---
 DEFAULT_CIPHER="aes-256-cbc"
@@ -14,7 +14,8 @@ GIT_USR_BIN=""
 
 # Attempt to find the Git usr/bin directory more reliably
 # This is a heuristic; a more robust method might be needed if Git is installed in a non-standard location
-if [[ "$OSTYPE" == "msys" || "$OSTYPE" == "cygwin" || -n "$WINDIR" ]]; then
+# Corrected line 17:
+if [[ "$OSTYPE" == "msys" || "$OSTYPE" == "cygwin" || -n "${WINDIR:-}" ]]; then
     # Try to find a common Git installation path.
     # This might need adjustment based on typical Git for Windows install locations.
     potential_git_paths=(
@@ -64,7 +65,6 @@ fi
 
 # --- Helper Functions ---
 cleanup() {
-    # ... (cleanup function remains the same)
     unset SCRIPT_ENCRYPTION_PASSWORD; unset password; unset password_confirm
     if [ -n "$1" ]; then echo "Error (code.sh): $1" >&2; fi
     if [ -n "$2" ] && [ "$2" -ne 0 ] && [ -n "$output_file_on_error" ] && [ -f "$output_file_on_error" ]; then
@@ -78,19 +78,18 @@ cleanup() {
 if ! command -v openssl &> /dev/null; then cleanup "OpenSSL is not installed." 1; fi
 
 # --- Main Script Logic (arguments $1=mode, $2=input, $3=output) ---
-# ... (Argument parsing and input file validation from previous version) ...
 if [ "$#" -lt 3 ]; then cleanup "Usage: $0 <e|d> <input> <output>" 1; fi
 script_mode_choice="$1"; raw_input_file_arg="$2"; raw_output_file_arg="$3"
 input_file_to_test="$raw_input_file_arg"; output_file_to_use="$raw_output_file_arg"; output_file_on_error="$output_file_to_use"
 echo "Debug (code.sh): Mode: [$script_mode_choice], Input: [$input_file_to_test], Output: [$output_file_to_use]" >&2
 case "$script_mode_choice" in [Ee]*) mode="encrypt";; [Dd]*) mode="decrypt";; *) cleanup "Invalid mode: '$script_mode_choice'." 1;; esac
 if [ -z "$input_file_to_test" ]; then cleanup "Input file empty." 1; fi
-if [ ! -f "$input_file_to_test" ]; then cleanup "Input '$input_file_to_test' not found/regular file." 1; fi # Already PASSED
+if [ ! -f "$input_file_to_test" ]; then cleanup "Input '$input_file_to_test' not found/regular file." 1; fi
 if [ ! -r "$input_file_to_test" ]; then cleanup "Input '$input_file_to_test' not readable." 1; fi
 echo "Debug (code.sh): File tests PASSED for '$input_file_to_test'." >&2
 if [ -z "$output_file_to_use" ]; then cleanup "Output file empty." 1; fi
 
-# Passwords from stdin (same)
+# Passwords from stdin
 read -r -s SCRIPT_ENCRYPTION_PASSWORD; if [ -z "$SCRIPT_ENCRYPTION_PASSWORD" ]; then cleanup "Password empty." 1; fi
 if [ "$mode" == "encrypt" ]; then read -r -s password_confirm; if [ "$SCRIPT_ENCRYPTION_PASSWORD" != "$password_confirm" ]; then cleanup "Passwords mismatch." 1; fi; unset password_confirm; fi
 export SCRIPT_ENCRYPTION_PASSWORD
@@ -129,7 +128,7 @@ action_past_tense="${mode}ed"
 
 if [ $rc -eq 0 ]; then
     echo "File '$raw_input_file_arg' successfully $action_past_tense to '$raw_output_file_arg'."
-    cleanup "" 0 
+    cleanup "" 0
 else
     cleanup "OpenSSL command failed to $mode '$raw_input_file_arg'. Exit code: $rc" "$rc" "$output_file_on_error"
 fi
